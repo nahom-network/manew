@@ -87,12 +87,39 @@ func (c *Client) getJSON(ctx context.Context, uri string, out any) (int, string,
 		return resp.StatusCode, resp.Request.URL.String(), errors.New("response too large")
 	}
 	if resp.StatusCode != 200 {
-		return resp.StatusCode, resp.Request.URL.String(), fmt.Errorf("HTTP %d: %.160s", resp.StatusCode, string(b))
+		return resp.StatusCode, resp.Request.URL.String(), rdapHTTPError(resp.StatusCode, b)
 	}
 	if err := json.Unmarshal(b, out); err != nil {
 		return resp.StatusCode, resp.Request.URL.String(), err
 	}
 	return resp.StatusCode, resp.Request.URL.String(), nil
+}
+
+// rdapHTTPError turns RDAP error documents into a short human message instead
+// of pasting a JSON blob into traces and reports.
+func rdapHTTPError(status int, body []byte) error {
+	var doc struct {
+		ErrorCode   string          `json:"errorCode"`
+		Title       string          `json:"title"`
+		Description json.RawMessage `json:"description"`
+	}
+	if json.Unmarshal(body, &doc) == nil {
+		msg := strings.TrimSpace(doc.Title)
+		if msg == "" {
+			var one string
+			var many []string
+			if json.Unmarshal(doc.Description, &one) == nil {
+				msg = strings.TrimSpace(one)
+			} else if json.Unmarshal(doc.Description, &many) == nil {
+				msg = strings.TrimSpace(strings.Join(many, " "))
+			}
+		}
+		if msg != "" {
+			return fmt.Errorf("HTTP %d: %s", status, truncate(msg, 100))
+		}
+	}
+	raw := strings.Join(strings.Fields(string(body)), " ")
+	return fmt.Errorf("HTTP %d: %s", status, truncate(raw, 100))
 }
 func normalize(d string) (string, error) {
 	d = strings.TrimSuffix(strings.TrimSpace(strings.ToLower(d)), ".")

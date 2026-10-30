@@ -5,11 +5,11 @@ A standalone terminal menu with an ASCII banner and nine modules. No third-party
 ## Build
 
 ```powershell
-go build -o nettool.exe .
-.\nettool.exe
+go build -o manew.exe .
+.\manew.exe
 ```
 
-Linux/macOS: `go build -o nettool . && ./nettool`
+Linux/macOS: `go build -o manew . && ./manew`
 
 ## Menu
 
@@ -33,8 +33,22 @@ Select `0` to quit. After each operation the menu appears again. Internet access
 - DNS TXT records can include verification secrets; do not share reports without reviewing them.
 - There is no continuous monitoring, CVE search, malware feed integration, or aggressive subdomain brute forcing.
 - A filtered port may appear the same as closed.
-- Results are JSON-formatted in the terminal, not automatically exported to disk.
+- Results are rendered as styled plain text in the terminal, not exported to disk. WHOIS records keep their classic `key: value` layout; RDAP objects are summarised as a registrar-style block.
+- The app paints a near-black canvas and a mint-to-violet accent palette, similar to a modern TUI. Set `NO_COLOR=1` to disable escapes (piped output is plain text automatically).
 
 ## Tests
 
 `go test ./...`
+
+## Releases
+
+Push a tag such as `v1.0.0` (or run the **release** workflow manually) and GitHub Actions publishes:
+
+- `manew-windows-amd64.exe` / `manew-windows-arm64.exe`
+- `manew-linux-amd64` / `manew-linux-arm64`
+
+The binaries are statically built with `CGO_ENABLED=0`, so the Linux builds run on any modern distribution.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

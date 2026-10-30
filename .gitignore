@@ -1,0 +1,22 @@
+# Build output
+/manew.exe
+/nettool.exe
+/manew
+/nettool
+/dist/
+/build/
+*.exe
+*.test
+*.out
+coverage.*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Local environment
+.env
+.env.*

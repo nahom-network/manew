@@ -12,25 +12,13 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
-
-const banner = `
-                      ••••
-      ••••••••••••••• ••••        ••••••••••
-    •••  ••• •••• ••• •••••••   ••• •••• ••••   • 
-   •••• •••• ••••••••  ••••••  •••  •••  •••••••••
-    •••••••      •••     •••• ••••  •••  ••••  •••
-                ••••     •••  •••• •••• ••••
-                •••     ••••  ••••••••••••
-               ••••     ••••
-                ••
-      NETWORK INTELLIGENCE TOOLKIT  /  Go
-`
 
 var httpClient = &http.Client{Timeout: 9 * time.Second, CheckRedirect: func(r *http.Request, via []*http.Request) error {
 	if len(via) >= 8 {
@@ -47,33 +35,25 @@ func ask(r *bufio.Reader, prompt string) string {
 	s, _ := r.ReadString('\n')
 	return strings.TrimSpace(s)
 }
-func output(label string, v any) {
-	b, e := json.MarshalIndent(v, "", "  ")
-	fmt.Printf("\n--- %s ---\n", label)
-	if e != nil {
-		fmt.Println(e)
-	} else {
-		fmt.Println(string(b))
-	}
-}
 func main() {
+	enterTheme()
+	defer exitTheme()
+	installCleanup()
+
 	r := bufio.NewReader(os.Stdin)
-	fmt.Print(banner)
+	renderBanner()
 	for {
-		fmt.Println("\n [1] WHOIS / RDAP     [2] DNS           [3] IP")
-		fmt.Println(" [4] SSL / TLS       [5] HTTP          [6] PORTS")
-		fmt.Println(" [7] Subdomains      [8] Health        [9] Threat")
-		fmt.Println(" [0] Exit")
-		ch := ask(r, "\nSelect > ")
+		renderMenu()
+		ch := ask(r, "\n  "+paint(cPurple+cBold, "› "))
 		if ch == "0" || strings.EqualFold(ch, "q") {
-			fmt.Println("Goodbye.")
+			fmt.Println("\n  " + paint(cDim, "Goodbye."))
 			return
 		}
 		if len(ch) != 1 || ch[0] < '1' || ch[0] > '9' {
-			fmt.Println("Unknown option")
+			fmt.Println("  " + paint(cRed, "✗ unknown option"))
 			continue
 		}
-		target := ask(r, "Domain, hostname or IP > ")
+		target := ask(r, "  "+paint(cDim, "domain / host / ip")+paint(cDim, " › "))
 		if target == "" {
 			continue
 		}
@@ -102,11 +82,27 @@ func main() {
 		}
 		cancel()
 		if err != nil {
-			fmt.Println("Error:", err)
+			fmt.Println("  " + paint(cRed, "✗ "+err.Error()))
 		} else {
-			output(map[string]string{"1": "WHOIS / RDAP", "2": "DNS", "3": "IP", "4": "SSL / TLS", "5": "HTTP", "6": "PORTS", "7": "SUBDOMAINS", "8": "HEALTH", "9": "THREAT"}[ch], data)
+			output(moduleLabels[ch], data)
 		}
 	}
+}
+
+var moduleLabels = map[string]string{
+	"1": "WHOIS / RDAP", "2": "DNS", "3": "IP", "4": "SSL / TLS", "5": "HTTP",
+	"6": "PORTS", "7": "SUBDOMAINS", "8": "HEALTH", "9": "THREAT",
+}
+
+func installCleanup() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt)
+	go func() {
+		<-ch
+		exitTheme()
+		fmt.Println()
+		os.Exit(130)
+	}()
 }
 func hostOf(input string) (string, error) {
 	input = strings.TrimSpace(input)
@@ -258,11 +254,11 @@ func portLookup(ctx context.Context, input string, r *bufio.Reader) (any, error)
 	if e != nil {
 		return nil, e
 	}
-	fmt.Println("Only scan hosts you own or have permission to test.")
-	if strings.ToLower(ask(r, "Authorized to scan this host? [yes/no] > ")) != "yes" {
+	fmt.Println("  " + paint(cYellow, "! Only scan hosts you own or have permission to test."))
+	if strings.ToLower(ask(r, "  "+paint(cDim, "authorized? [yes/no]")+paint(cDim, " › "))) != "yes" {
 		return nil, errors.New("port check cancelled")
 	}
-	raw := ask(r, "Ports (comma-separated, Enter for 21,22,25,53,80,110,143,443,3306,5432,6379,8080,8443) > ")
+	raw := ask(r, "  "+paint(cDim, "ports (comma-separated, Enter for default)")+paint(cDim, " › "))
 	if raw == "" {
 		raw = "21,22,25,53,80,110,143,443,3306,5432,6379,8080,8443"
 	}
