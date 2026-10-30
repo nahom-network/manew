@@ -1,4 +1,4 @@
-# NetTool — interactive Go network diagnostics
+# Manew 👀 — interactive Go network diagnostics
 
 A standalone terminal menu with an ASCII banner and nine modules. No third-party Go packages.
 
